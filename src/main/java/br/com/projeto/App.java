@@ -1,9 +1,12 @@
 package br.com.projeto;
 
-import static spark.Spark.*;
+import java.util.List;
+
 import br.com.projeto.dao.ProdutoDAO;
 import br.com.projeto.model.Produto;
-import java.util.List;
+import static spark.Spark.get;
+import static spark.Spark.port;
+import static spark.Spark.post;
 
 public class App {
     public static void main(String[] args) {
@@ -37,10 +40,48 @@ public class App {
             StringBuilder sb = new StringBuilder("<h1>Produtos</h1><ul>");
             for (Produto p : lista) {
                 sb.append("<li>").append(p.getId()).append(" - ").append(p.getNome())
-                  .append(" - R$").append(p.getPreco()).append("</li>");
+                .append(" - R$").append(p.getPreco())
+                .append(" <a href='/editar/").append(p.getId()).append("'>Editar</a>")
+                .append(" <a href='/excluir/").append(p.getId()).append("'>Excluir</a>")
+                .append("</li>");
             }
             sb.append("</ul><a href='/'>Voltar</a>");
             return sb.toString();
+        });
+
+        // Excluir produto
+        get("/excluir/:id", (req, res) -> {
+            int id = Integer.parseInt(req.params(":id"));
+            dao.excluir(id);
+            res.redirect("/listar");
+            return null;
+        });
+
+        // Editar produto
+        get("/editar/:id", (req, res) -> {
+            int id = Integer.parseInt(req.params(":id"));
+            Produto p = dao.buscarPorId(id);
+            if (p != null) {
+                return "<h1>Editar Produto</h1>"
+                    + "<form action='/editar' method='post'>"
+                    + "<input type='hidden' name='id' value='" + p.getId() + "'>"
+                    + "Nome: <input type='text' name='nome' value='" + p.getNome() + "'><br>"
+                    + "Preço: <input type='text' name='preco' value='" + p.getPreco() + "'><br>"
+                    + "<input type='submit' value='Atualizar'>"
+                    + "</form>";
+            }
+            res.redirect("/listar");
+            return null;
+        });
+
+        // Recebe formulário de edição e atualiza no banco
+        post("/editar", (req, res) -> {
+            int id = Integer.parseInt(req.queryParams("id"));
+            String nome = req.queryParams("nome");
+            double preco = Double.parseDouble(req.queryParams("preco"));
+            dao.atualizar(new Produto(id, nome, preco));
+            res.redirect("/listar");
+            return null;
         });
     }
 }
